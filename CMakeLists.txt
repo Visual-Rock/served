@@ -1,134 +1,38 @@
-# Copyright (C) 2014 MediaSift Ltd.
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
+cmake_minimum_required(VERSION 3.0.0)
+project(served)
 
-#
-# Project Properties
-#
-CMAKE_MINIMUM_REQUIRED (VERSION 2.6.2)
-PROJECT (served)
-SET (APPLICATION_NAME "Served HTTP REST Library")
-SET (APPLICATION_CODENAME "${PROJECT_NAME}")
-SET (APPLICATION_COPYRIGHT_YEARS "2014")
-SET (APPLICATION_VERSION_MAJOR 1)
-SET (APPLICATION_VERSION_MINOR 4)
-SET (APPLICATION_VERSION_PATCH 3)
-SET (APPLICATION_VERSION_TYPE DS1)
-SET (APPLICATION_VERSION_STRING "${APPLICATION_VERSION_MAJOR}.${APPLICATION_VERSION_MINOR}.${APPLICATION_VERSION_PATCH}-${APPLICATION_VERSION_TYPE}")
-SET (APPLICATION_VENDOR_ID "com.meltwater")
-SET (APPLICATION_VENDOR_NAME "Meltwater")
-SET (APPLICATION_VENDOR_URL "meltwater.com")
-SET (APPLICATION_ID "${APPLICATION_VENDOR_ID}.${PROJECT_NAME}")
+find_package(CURL REQUIRED)
+find_package(Threads)
+find_package(Boost REQUIRED)
 
-#
-# Configurable Options
-#
-OPTION (SERVED_BUILD_SHARED "Build shared object" ON)
-OPTION (SERVED_BUILD_STATIC "Build static library" OFF)
-OPTION (SERVED_BUILD_TESTS "Build unit test suite" ON)
-OPTION (SERVED_BUILD_EXAMPLES "Build examples" ON)
-OPTION (SERVED_BUILD_RPM "Build RPM package" OFF)
-OPTION (SERVED_BUILD_DEB "Build DEB package" OFF)
+# Setting Output Directorys
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-#
-# Debugging Options
-#
-SET (CMAKE_VERBOSE_MAKEFILE 0) # Use 1 for debugging, 0 for release
+set(SRC_FILES 
+    "methods_handler.cpp"
+    "multiplexer.cpp"
+    "parameters.cpp"
+    "request_parser_impl.cpp"
+    "request_parser.cpp"
+    "request.cpp"
+    "response.cpp"
+    "status.cpp"
+    "uri.cpp"
 
-#
-# Project Output Paths
-#
-SET (MAINFOLDER ${PROJECT_SOURCE_DIR})
-SET (EXECUTABLE_OUTPUT_PATH "${MAINFOLDER}/bin")
-SET (LIBRARY_OUTPUT_PATH "${MAINFOLDER}/lib")
+    "mux/regex_matcher.cpp"
+    "mux/static_matcher.cpp"
+    "mux/variable_matcher.cpp"
 
-#
-# Project Search Paths
-#
-LIST (APPEND CMAKE_PREFIX_PATH "${MAINFOLDER}")
-SET (CMAKE_MODULE_PATH "${MAINFOLDER}/cmake")
-INCLUDE_DIRECTORIES ("${MAINFOLDER}/src")
+    "net/connection_manager.cpp"
+    "net/connection.cpp"
+    "net/server.cpp"
 
-#
-# Locate Project Prerequisites
-#
-FIND_PACKAGE (Boost 1.53 COMPONENTS "system" REQUIRED)
-INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIRS})
-LINK_DIRECTORIES (${Boost_LIBRARY_DIRS})
+    "plugins/access_log.cpp"
+)
 
-INCLUDE (FindRAGEL)
-FIND_PACKAGE (RAGEL)
+include_directories(../ ${CURL_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
-FIND_PACKAGE (Threads)
-
-INCLUDE (EnableStdCXX11)
-ENABLE_STDCXX11 ()
-
-#
-# Enable warnings
-#
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -Wno-missing-field-initializers")
-
-#
-# Configure Files
-#
-FILE (GLOB_RECURSE CONFIGINPUTS1 src/served/*.hpp.in.cmake)
-LIST (APPEND CONFIGINPUTS "${CONFIGINPUTS1}")
-FOREACH (CONFIGINPUT ${CONFIGINPUTS})
-    STRING (REPLACE ".hpp.in.cmake" ".hpp" CONFIGOUTPUT "${CONFIGINPUT}")
-    CONFIGURE_FILE ("${CONFIGINPUT}" "${CONFIGOUTPUT}")
-ENDFOREACH (CONFIGINPUT ${CONFIGINPUTS})
-
-#
-# pkg-config file generator
-#
-CONFIGURE_FILE("install/pkgconfig/served.pc.in" "${LIBRARY_OUTPUT_PATH}/pkgconfig/served.pc" @ONLY)
-INSTALL(FILES "${LIBRARY_OUTPUT_PATH}/pkgconfig/served.pc" DESTINATION lib/pkgconfig )
-
-#
-# Add Build Targets
-#
-IF (SERVED_BUILD_TESTS)
-    ENABLE_TESTING (true)
-ENDIF (SERVED_BUILD_TESTS)
-ADD_SUBDIRECTORY (src)
-
-#
-# CPack Generic
-#
-SET(CPACK_PACKAGE_NAME "libserved")
-SET(CPACK_PACKAGE_VERSION "${APPLICATION_VERSION_MAJOR}.${APPLICATION_VERSION_MINOR}.${APPLICATION_VERSION_PATCH}")
-SET(CPACK_PACKAGE_VERSION_MAJOR "${APPLICATION_VERSION_MAJOR}")
-SET(CPACK_PACKAGE_VERSION_MINOR "${APPLICATION_VERSION_MINOR}")
-SET(CPACK_PACKAGE_VERSION_PATCH "${APPLICATION_VERSION_PATCH}")
-SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Served is a C++ library for building high performance RESTful web servers")
-SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
-SET(CPACK_PACKAGE_VENDOR "${APPLICATION_VENDOR_NAME}")
-SET(CPACK_PACKAGE_URL "${APPLICATION_VENDOR_URL}")
-SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.md")
-SET(CPACK_SOURCE_GENERATOR "TGZ")
-
-IF (SERVED_BUILD_DEB)
-    INCLUDE(CPackConfigDEB)
-ENDIF (SERVED_BUILD_DEB)
-IF (SERVED_BUILD_RPM)
-    INCLUDE(CPackConfigRPM)
-ENDIF (SERVED_BUILD_RPM)
-
-INCLUDE(CPack)
+add_library(served STATIC ${SRC_FILES})
+target_link_libraries(served ${CMAKE_THREAD_LIBS_INIT} ${Boost_LIBRARIES} ${CURL_LIBRARIES})
